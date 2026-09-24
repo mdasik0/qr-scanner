@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#081C15" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="QR Scan" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <title>QR Scan — Item Checking</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #081c15;
+        --panel: #121f1a;
+        --text: #d8f3dc;
+        --muted: #95d5b2;
+        --accent: #2d6a4f;
+        --danger: #f87171;
+        --ok: #4ade80;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: radial-gradient(1200px 600px at 50% -10%, #1b4332, var(--bg));
+        color: var(--text);
+        padding: 1.25rem;
+      }
+      main {
+        max-width: 28rem;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.35rem;
+        margin: 0 0 0.35rem;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 1.25rem;
+        line-height: 1.4;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid #1f3a2e;
+        border-radius: 1rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+      .actions {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 0.9rem;
+      }
+      button,
+      .file-btn {
+        appearance: none;
+        border: 0;
+        border-radius: 0.85rem;
+        padding: 0.95rem 1rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: center;
+      }
+      button:disabled {
+        opacity: 0.65;
+        cursor: wait;
+      }
+      .primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .file-btn {
+        background: #1b4332;
+        color: var(--text);
+        display: block;
+      }
+      .ghost {
+        background: transparent;
+        border: 1px solid #2d4a3c;
+        color: var(--muted);
+      }
+      #status {
+        min-height: 1.4rem;
+        font-size: 0.9rem;
+        margin-top: 0.75rem;
+        color: var(--muted);
+      }
+      #status.ok {
+        color: var(--ok);
+      }
+      #status.err {
+        color: var(--danger);
+      }
+      .hint {
+        font-size: 0.8rem;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .viewport {
+        position: relative;
+        display: none;
+        width: 100%;
+        border-radius: 0.85rem;
+        overflow: hidden;
+        background: #000;
+        aspect-ratio: 3 / 4;
+      }
+      .viewport.active {
+        display: block;
+      }
+      #video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .frame {
+        position: absolute;
+        inset: 18% 14%;
+        border: 2px solid rgba(216, 243, 220, 0.85);
+        border-radius: 0.75rem;
+        box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35);
+        pointer-events: none;
+      }
+      #payload {
+        display: none;
+        margin-top: 0.75rem;
+        font-family: ui-monospace, monospace;
+        font-size: 0.8rem;
+        word-break: break-all;
+        color: var(--muted);
+      }
+      input[type="file"] {
+        display: none;
+      }
+      .sent-badge {
+        display: none;
+        margin-top: 0.75rem;
+        padding: 0.85rem 1rem;
+        border-radius: 0.85rem;
+        background: rgba(74, 222, 128, 0.12);
+        border: 1px solid rgba(74, 222, 128, 0.35);
+        color: var(--ok);
+        font-weight: 600;
+        text-align: center;
+      }
+      .sent-badge.show {
+        display: block;
+      }
+      #permHint {
+        display: none;
+        margin-top: 0.75rem;
+        padding: 0.75rem 0.85rem;
+        border-radius: 0.75rem;
+        border: 1px dashed #2d6a4f;
+        background: rgba(45, 106, 79, 0.2);
+        color: var(--text);
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+      #permHint.show {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="hint" style="margin-top: 0">
+        This page is the <strong>browser</strong> scanner. For the native app
+        (Connect API + See data),
+        <a href="/install" style="color: #4ade80">install APK v0.7.0</a>.
+      </p>
+      <h1>Scan for Item Checking</h1>
+      <p class="sub">
+        Point at a sub-batch QR. On capture, the camera stops and Espresso
+        Item Checking updates live — nothing is stored.
+      </p>
+
+      <div class="card">
+        <div id="viewport" class="viewport">
+          <video id="video" playsinline muted autoplay></video>
+          <div class="frame" aria-hidden="true"></div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="startCam" type="button">
+            Start camera scan
+          </button>
+          <button class="ghost" id="stopCam" type="button" hidden>
+            Stop camera
+          </button>
+          <button class="ghost" id="installApp" type="button" hidden>
+            Install as app
+          </button>
+          <label class="file-btn" for="photo">
+            Or take / choose photo
+            <input id="photo" type="file" accept="image/*" capture="environment" />
+          </label>
+        </div>
+
+        <p id="permHint">
+          Your phone should show a <strong>camera permission</strong> popup —
+          tap <strong>Allow</strong> so scanning can start.
+        </p>
+        <div id="sent" class="sent-badge">Sent — check Item Checking on PC</div>
+        <p id="payload"></p>
+        <p id="status">Ready</p>
+      </div>
+
+      <p class="hint">
+        Keep Espresso open on <strong>Item Checking → Phone app</strong>. Same
+        Wi‑Fi as this phone. Tap <strong>Install as app</strong> (Chrome) or use
+        browser menu → <strong>Add to Home screen</strong> to open it like a
+        native app. If live camera is blocked on plain <code>http://</code>, use
+        <strong>Take photo</strong>.
+      </p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script>
+      const statusEl = document.getElementById("status");
+      const payloadEl = document.getElementById("payload");
+      const sentEl = document.getElementById("sent");
+      const photoEl = document.getElementById("photo");
+      const startBtn = document.getElementById("startCam");
+      const stopBtn = document.getElementById("stopCam");
+      const installBtn = document.getElementById("installApp");
+      const viewport = document.getElementById("viewport");
+      const video = document.getElementById("video");
+      const permHint = document.getElementById("permHint");
+
+      let deferredInstall = null;
+
+      let config = {
+        ingestKey: "dev-qr-ingest-key",
+        apiBase: location.origin,
+      };
+
+      let stream = null;
+      let scanning = false;
+      let rafId = 0;
+      let busy = false;
+      let detector = null;
+      let requestingPermission = false;
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+      function setStatus(text, kind) {
+        statusEl.textContent = text;
+        statusEl.className = kind || "";
+      }
+
+      function setPermHint(visible) {
+        permHint.classList.toggle("show", Boolean(visible));
+      }
+
+      function deviceId() {
+        const key = "qr_parasite_device_id";
+        let id = localStorage.getItem(key);
+        if (!id) {
+          id =
+            "web-" +
+            Math.random().toString(36).slice(2, 10) +
+            "-" +
+            Date.now().toString(36);
+          localStorage.setItem(key, id);
+        }
+        return id;
+      }
+
+      async function loadConfig() {
+        try {
+          const res = await fetch("/scan/config.json", { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            config = { ...config, ...data };
+          }
+        } catch (_) {}
+      }
+
+      function stopCamera() {
+        scanning = false;
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+        if (stream) {
+          stream.getTracks().forEach((t) => t.stop());
+          stream = null;
+        }
+        video.srcObject = null;
+        viewport.classList.remove("active");
+        startBtn.hidden = false;
+        stopBtn.hidden = true;
+      }
+
+      function cameraErrorMessage(err) {
+        const name = err && err.name ? err.name : "";
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          return "Permission denied — tap Start camera again and choose Allow (or enable Camera for this site in browser settings)";
+        }
+        if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          return "No camera found on this device";
+        }
+        if (name === "NotReadableError" || name === "TrackStartError") {
+          return "Camera is in use by another app — close it and try again";
+        }
+        if (name === "SecurityError" || !window.isSecureContext) {
+          return "This browser blocks live camera on plain http:// — use Take photo, or open via HTTPS";
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          return "Camera API not available — use Take photo instead";
+        }
+        return (err && err.message) || "Could not open camera — use Take photo instead";
+      }
+
+      function tryJsQR(imageData) {
+        if (!window.jsQR) return null;
+        const code = window.jsQR(
+          imageData.data,
+          imageData.width,
+          imageData.height,
+          { inversionAttempts: "dontInvert" }
+        );
+        return code && code.data ? code.data : null;
+      }
+
+      async function tryNative(bitmapOrVideo) {
+        if (!detector) return null;
+        try {
+          const codes = await detector.detect(bitmapOrVideo);
+          if (codes && codes[0] && codes[0].rawValue) return codes[0].rawValue;
+        } catch (_) {}
+        return null;
+      }
+
+      async function sendPayload(raw) {
+        const res = await fetch(config.apiBase + "/api/v1/qr-scans", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-QR-Ingest-Key": config.ingestKey,
+          },
+          body: JSON.stringify({
+            raw_payload: raw,
+            device_id: deviceId(),
+            device_label: navigator.userAgent.slice(0, 80),
+            format: "QR_CODE",
+            meta: { client: "web-scan", via: "live-or-photo", ephemeral: true },
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(json.message || "HTTP " + res.status);
+        }
+        return json;
+      }
+
+      async function onDecoded(raw) {
+        if (busy) return;
+        busy = true;
+        stopCamera();
+        payloadEl.style.display = "block";
+        payloadEl.textContent = raw;
+        setStatus("Sending…");
+        sentEl.classList.remove("show");
+        try {
+          await sendPayload(raw);
+          sentEl.classList.add("show");
+          setStatus("Sent — open Item Checking on PC", "ok");
+        } catch (e) {
+          setStatus(e.message || "Send failed", "err");
+        } finally {
+          busy = false;
+        }
+      }
+
+      async function tick() {
+        if (!scanning || !stream) return;
+
+        if (video.readyState >= 2) {
+          const w = video.videoWidth;
+          const h = video.videoHeight;
+          if (w && h) {
+            const cw = Math.floor(w * 0.72);
+            const ch = Math.floor(h * 0.72);
+            const sx = Math.floor((w - cw) / 2);
+            const sy = Math.floor((h - ch) / 2);
+            const maxSide = 640;
+            const scale = Math.min(1, maxSide / Math.max(cw, ch));
+            const dw = Math.max(1, Math.round(cw * scale));
+            const dh = Math.max(1, Math.round(ch * scale));
+            canvas.width = dw;
+            canvas.height = dh;
+            ctx.drawImage(video, sx, sy, cw, ch, 0, 0, dw, dh);
+
+            let hit = await tryNative(canvas);
+            if (!hit) {
+              hit = tryJsQR(ctx.getImageData(0, 0, dw, dh));
+            }
+            if (hit) {
+              await onDecoded(hit);
+              return;
+            }
+          }
+        }
+
+        rafId = requestAnimationFrame(() => {
+          void tick();
+        });
+      }
+
+      /** Triggers the browser/OS camera permission prompt from a user tap. */
+      async function requestCameraStream() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          const err = new Error("getUserMedia unavailable");
+          err.name = "NotSupportedError";
+          throw err;
+        }
+
+        const attempts = [
+          // Prefer rear / world-facing camera for QR labels.
+          {
+            audio: false,
+            video: {
+              facingMode: { exact: "environment" },
+            },
+          },
+          {
+            audio: false,
+            video: {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          },
+          {
+            audio: false,
+            video: { facingMode: "environment" },
+          },
+        ];
+
+        // If enumerateDevices is available, pick an explicit back camera id.
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videos = devices.filter((d) => d.kind === "videoinput");
+          const back = videos.find((d) =>
+            /back|rear|environment|world/i.test(d.label || "")
+          );
+          if (back && back.deviceId) {
+            attempts.unshift({
+              audio: false,
+              video: { deviceId: { exact: back.deviceId } },
+            });
+          }
+        } catch (_) {}
+
+        let lastErr = null;
+        for (const constraints of attempts) {
+          try {
+            return await navigator.mediaDevices.getUserMedia(constraints);
+          } catch (err) {
+            lastErr = err;
+            if (
+              err &&
+              (err.name === "NotAllowedError" ||
+                err.name === "PermissionDeniedError" ||
+                err.name === "SecurityError")
+            ) {
+              throw err;
+            }
+          }
+        }
+
+        // Last resort — any camera (may be front on some phones).
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true,
+          });
+        } catch (err) {
+          throw lastErr || err;
+        }
+      }
+
+      async function startCamera() {
+        if (requestingPermission || busy) return;
+        requestingPermission = true;
+        startBtn.disabled = true;
+        sentEl.classList.remove("show");
+        setPermHint(true);
+        setStatus("Waiting for camera permission… tap Allow on the popup");
+
+        try {
+          if (typeof BarcodeDetector !== "undefined") {
+            try {
+              detector = new BarcodeDetector({ formats: ["qr_code"] });
+            } catch (_) {
+              detector = null;
+            }
+          }
+
+          stream = await requestCameraStream();
+          setPermHint(false);
+          video.setAttribute("playsinline", "");
+          video.muted = true;
+          video.srcObject = stream;
+          await video.play();
+          viewport.classList.add("active");
+          startBtn.hidden = true;
+          stopBtn.hidden = false;
+          scanning = true;
+          setStatus("Camera on — point at QR; auto-sends when found", "ok");
+          rafId = requestAnimationFrame(() => {
+            void tick();
+          });
+        } catch (e) {
+          stopCamera();
+          setPermHint(false);
+          setStatus(cameraErrorMessage(e), "err");
+        } finally {
+          requestingPermission = false;
+          startBtn.disabled = false;
+        }
+      }
+
+      async function decodePhoto(file) {
+        const url = URL.createObjectURL(file);
+        try {
+          let bitmap = null;
+          try {
+            bitmap = await createImageBitmap(file);
+          } catch (_) {}
+
+          if (bitmap && typeof BarcodeDetector !== "undefined") {
+            try {
+              const det = new BarcodeDetector({ formats: ["qr_code"] });
+              const codes = await det.detect(bitmap);
+              if (codes && codes[0] && codes[0].rawValue) {
+                return codes[0].rawValue;
+              }
+            } catch (_) {}
+          }
+
+          const img =
+            bitmap ||
+            (await new Promise((resolve, reject) => {
+              const el = new Image();
+              el.onload = () => resolve(el);
+              el.onerror = () => reject(new Error("Could not load image"));
+              el.src = url;
+            }));
+
+          const maxSide = 960;
+          const sw = img.width || img.naturalWidth;
+          const sh = img.height || img.naturalHeight;
+          const scale = Math.min(1, maxSide / Math.max(sw, sh));
+          const w = Math.max(1, Math.round(sw * scale));
+          const h = Math.max(1, Math.round(sh * scale));
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(img, 0, 0, w, h);
+          const hit = tryJsQR(ctx.getImageData(0, 0, w, h));
+          if (hit) return hit;
+
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          const res = await fetch(config.apiBase + "/api/v1/qr-decode", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-QR-Ingest-Key": config.ingestKey,
+            },
+            body: JSON.stringify({ image_base64: dataUrl }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (res.ok && json.data && json.data.raw_payload) {
+            return json.data.raw_payload;
+          }
+          throw new Error(json.message || "No QR found in photo");
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+
+      startBtn.addEventListener("click", () => void startCamera());
+      stopBtn.addEventListener("click", () => {
+        stopCamera();
+        setPermHint(false);
+        setStatus("Camera stopped");
+      });
+
+      window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        deferredInstall = event;
+        installBtn.hidden = false;
+      });
+
+      installBtn.addEventListener("click", async () => {
+        if (!deferredInstall) {
+          setStatus(
+            "Use browser menu → Add to Home screen / Install app",
+            "ok"
+          );
+          return;
+        }
+        deferredInstall.prompt();
+        const choice = await deferredInstall.userChoice.catch(() => null);
+        deferredInstall = null;
+        installBtn.hidden = true;
+        if (choice && choice.outcome === "accepted") {
+          setStatus("Installed — open QR Scan from your home screen", "ok");
+        }
+      });
+
+      photoEl.addEventListener("change", async () => {
+        const file = photoEl.files && photoEl.files[0];
+        photoEl.value = "";
+        if (!file) return;
+        stopCamera();
+        setPermHint(false);
+        setStatus("Reading photo…");
+        sentEl.classList.remove("show");
+        try {
+          const text = await decodePhoto(file);
+          await onDecoded(text);
+        } catch (e) {
+          setStatus(e.message || "Decode failed", "err");
+        }
+      });
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      }
+
+      loadConfig().then(() =>
+        setStatus("Ready — tap Start camera scan to allow camera access")
+      );
+    </script>
+  </body>
+</html>

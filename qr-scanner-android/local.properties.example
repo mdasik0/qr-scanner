@@ -1,0 +1,5 @@
+## This file is filled by Android Studio / SDK. Example keys for QR bridge:
+
+# sdk.dir=C\:\\Users\\You\\AppData\\Local\\Android\\Sdk
+qr.bridge.base.url=http://10.0.2.2:5055
+qr.ingest.key=dev-qr-ingest-key

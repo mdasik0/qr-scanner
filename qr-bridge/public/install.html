@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#081C15" />
+    <link rel="icon" type="image/png" href="/icons/app-logo.png" />
+    <title>Install QR Scan 0.7.0</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #081c15;
+        --panel: #121f1a;
+        --text: #d8f3dc;
+        --muted: #95d5b2;
+        --accent: #2d6a4f;
+        --ok: #4ade80;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        font-family: system-ui, sans-serif;
+        background: radial-gradient(1200px 600px at 50% -10%, #1b4332, var(--bg));
+        color: var(--text);
+        padding: 1.25rem;
+      }
+      main {
+        max-width: 28rem;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 0.35rem;
+      }
+      .badge {
+        color: var(--ok);
+        font-weight: 700;
+        margin-bottom: 1rem;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid #1f3a2e;
+        border-radius: 1rem;
+        padding: 1rem;
+      }
+      ol {
+        color: var(--muted);
+        line-height: 1.5;
+        padding-left: 1.2rem;
+      }
+      a.btn {
+        display: block;
+        margin-top: 1rem;
+        text-align: center;
+        text-decoration: none;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+        border-radius: 0.85rem;
+        padding: 0.95rem 1rem;
+      }
+      .ghost {
+        display: block;
+        margin-top: 0.75rem;
+        text-align: center;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img
+        src="/icons/app-logo.png"
+        alt="QR Scan"
+        width="96"
+        height="96"
+        style="display: block; width: 96px; height: 96px; border-radius: 22px; margin: 0 0 1rem"
+      />
+      <p class="badge">Native Android APK — v0.7.0</p>
+      <h1>Install the real app</h1>
+      <p class="badge" style="font-weight: 400; color: var(--muted)">
+        This is not the browser camera page. After install you should see
+        <strong>Native app v0.7.0</strong> and a backend login screen.
+      </p>
+      <div class="card">
+        <ol>
+          <li>Uninstall any old <strong>QR Scan</strong> app and any home-screen shortcut that opens Chrome.</li>
+          <li>Tap the button below and install the APK.</li>
+          <li>Open <strong>QR Scan</strong> from the app drawer — not from the browser.</li>
+        </ol>
+        <a class="btn" href="/sumo-qr-scan-v070.apk">Download QR Scan v0.7.0</a>
+        <a class="ghost" href="/scan">Browser scanner (old page)</a>
+      </div>
+    </main>
+  </body>
+</html>
