@@ -9,6 +9,7 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.widget.LinearLayout
 import android.widget.TableRow
 import android.widget.TextView
 import android.widget.Toast
@@ -29,7 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 class MainActivity : AppCompatActivity() {
-    private enum class Screen { SETUP, MODE, SCAN }
+    private enum class Screen { SETUP, MODE, SETTINGS, SCAN }
     private enum class ScanMode { SCANNER, SEE_DATA }
 
     private lateinit var binding: ActivityMainBinding
@@ -64,6 +65,11 @@ class MainActivity : AppCompatActivity() {
         binding.scannerModeButton.setOnClickListener { enterScan(ScanMode.SCANNER) }
         binding.seeDataModeButton.setOnClickListener { enterScan(ScanMode.SEE_DATA) }
         binding.changeUrlButton.setOnClickListener { showScreen(Screen.SETUP) }
+        binding.settingsButton.setOnClickListener { showScreen(Screen.SETTINGS) }
+        binding.settingsDoneButton.setOnClickListener { showScreen(Screen.MODE) }
+        binding.templateTableButton.setOnClickListener { pickTemplate(DisplayTemplate.TABLE) }
+        binding.templateCardsButton.setOnClickListener { pickTemplate(DisplayTemplate.CARDS) }
+        binding.templateListButton.setOnClickListener { pickTemplate(DisplayTemplate.LIST) }
         binding.changeModeButton.setOnClickListener {
             stopCamera()
             showScreen(Screen.MODE)
@@ -105,13 +111,16 @@ class MainActivity : AppCompatActivity() {
         screen = next
         binding.setupLayer.visibility = visibleIf(next == Screen.SETUP)
         binding.modeLayer.visibility = visibleIf(next == Screen.MODE)
+        binding.settingsLayer.visibility = visibleIf(next == Screen.SETTINGS)
         binding.scanLayer.visibility = visibleIf(next == Screen.SCAN)
         if (next == Screen.MODE) {
             binding.connectedUrlText.text = getString(
-                R.string.mode_connected,
-                settings.baseUrl
+                R.string.mode_connected_template,
+                settings.baseUrl,
+                templateLabel(settings.displayTemplate),
             )
         }
+        if (next == Screen.SETTINGS) highlightTemplateButtons()
         if (next != Screen.SCAN) stopCamera()
     }
 
@@ -209,7 +218,7 @@ class MainActivity : AppCompatActivity() {
                     if (scanMode == ScanMode.SCANNER) R.string.status_ok
                     else R.string.status_lookup_ok
                 )
-                renderTable(table, warning = false)
+                renderResult(table, warning = false)
                 binding.scanAgainButton.visibility = View.VISIBLE
                 Toast.makeText(
                     this,
@@ -224,7 +233,7 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 binding.statusText.setTextColor(Color.parseColor("#F4D35E"))
                 binding.statusText.setText(R.string.status_format_warning)
-                renderTable(TableResult.formatGuide(), warning = true)
+                renderResult(TableResult.formatGuide(), warning = true, forceTable = true)
                 binding.scanAgainButton.visibility = View.GONE
                 Toast.makeText(this, R.string.status_format_warning, Toast.LENGTH_SHORT).show()
                 ensureCameraPermissionAndStart()
@@ -253,7 +262,7 @@ class MainActivity : AppCompatActivity() {
                         binding.statusText.setTextColor(Color.parseColor("#D8F3DC"))
                         binding.statusText.setText(R.string.status_ok)
                         try {
-                            renderTable(TableResult.fromShowResponse(json), warning = false)
+                            renderResult(TableResult.fromShowResponse(json), warning = false)
                         } catch (_: ShowFormatException) {
                             binding.resultTitle.visibility = View.VISIBLE
                             binding.resultTitle.text = json.optString("message").ifBlank { "Sent" }
@@ -279,26 +288,163 @@ class MainActivity : AppCompatActivity() {
         binding.resultTitle.setTextColor(Color.parseColor("#4ADE80"))
     }
 
+    private fun pickTemplate(template: DisplayTemplate) {
+        settings.displayTemplate = template
+        highlightTemplateButtons()
+    }
+
+    private fun highlightTemplateButtons() {
+        styleTemplateButton(binding.templateTableButton, settings.displayTemplate == DisplayTemplate.TABLE)
+        styleTemplateButton(binding.templateCardsButton, settings.displayTemplate == DisplayTemplate.CARDS)
+        styleTemplateButton(binding.templateListButton, settings.displayTemplate == DisplayTemplate.LIST)
+    }
+
+    private fun styleTemplateButton(
+        button: com.google.android.material.button.MaterialButton,
+        selected: Boolean,
+    ) {
+        if (selected) {
+            button.setBackgroundColor(Color.parseColor("#2D6A4F"))
+            button.setTextColor(Color.WHITE)
+        } else {
+            button.setBackgroundColor(Color.parseColor("#1B4332"))
+            button.setTextColor(Color.parseColor("#D8F3DC"))
+        }
+    }
+
+    private fun templateLabel(template: DisplayTemplate): String = when (template) {
+        DisplayTemplate.TABLE -> getString(R.string.template_table)
+        DisplayTemplate.CARDS -> getString(R.string.template_cards)
+        DisplayTemplate.LIST -> getString(R.string.template_list)
+    }
+
     private fun clearResult() {
         binding.resultTable.removeAllViews()
+        binding.resultList.removeAllViews()
         binding.resultTitle.visibility = View.GONE
         binding.resultTitle.setTextColor(Color.parseColor("#4ADE80"))
         binding.tableScroll.visibility = View.GONE
+        binding.listScroll.visibility = View.GONE
         binding.scanAgainButton.visibility = View.GONE
     }
 
-    private fun renderTable(table: TableResult, warning: Boolean = false) {
+    private fun renderResult(
+        table: TableResult,
+        warning: Boolean = false,
+        forceTable: Boolean = false,
+    ) {
         binding.resultTitle.text = table.title
         binding.resultTitle.setTextColor(
             Color.parseColor(if (warning) "#F4D35E" else "#4ADE80")
         )
         binding.resultTitle.visibility = View.VISIBLE
         binding.resultTable.removeAllViews()
-        binding.resultTable.addView(buildRow(table.columns, header = true, rowIndex = -1))
-        table.rows.forEachIndexed { index, cells ->
-            binding.resultTable.addView(buildRow(cells, header = false, rowIndex = index))
+        binding.resultList.removeAllViews()
+        val template = if (forceTable) DisplayTemplate.TABLE else settings.displayTemplate
+        when (template) {
+            DisplayTemplate.TABLE -> {
+                binding.resultTable.addView(buildRow(table.columns, header = true, rowIndex = -1))
+                table.rows.forEachIndexed { index, cells ->
+                    binding.resultTable.addView(buildRow(cells, header = false, rowIndex = index))
+                }
+                binding.tableScroll.visibility = View.VISIBLE
+                binding.listScroll.visibility = View.GONE
+            }
+            DisplayTemplate.CARDS -> {
+                records(table).forEach { record -> binding.resultList.addView(buildCard(record)) }
+                binding.tableScroll.visibility = View.GONE
+                binding.listScroll.visibility = View.VISIBLE
+            }
+            DisplayTemplate.LIST -> {
+                records(table).forEachIndexed { index, record ->
+                    if (index > 0) binding.resultList.addView(buildDivider())
+                    record.forEach { (field, value) ->
+                        binding.resultList.addView(buildListField(field, value))
+                    }
+                }
+                binding.tableScroll.visibility = View.GONE
+                binding.listScroll.visibility = View.VISIBLE
+            }
         }
-        binding.tableScroll.visibility = View.VISIBLE
+    }
+
+    private fun records(table: TableResult): List<List<Pair<String, String>>> {
+        return table.rows.map { row ->
+            table.columns.mapIndexed { index, column ->
+                column to (row.getOrNull(index) ?: "—")
+            }
+        }
+    }
+
+    private fun dp(value: Int): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            value.toFloat(),
+            resources.displayMetrics,
+        ).toInt()
+    }
+
+    private fun buildCard(record: List<Pair<String, String>>): LinearLayout {
+        val card = LinearLayout(this)
+        card.orientation = LinearLayout.VERTICAL
+        card.setBackgroundColor(Color.parseColor("#0F241C"))
+        card.setPadding(dp(12), dp(12), dp(12), dp(12))
+        val params = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        )
+        params.bottomMargin = dp(10)
+        card.layoutParams = params
+        record.forEachIndexed { index, (field, value) ->
+            if (index == 0) {
+                val headline = TextView(this)
+                headline.text = value
+                headline.setTextColor(Color.parseColor("#4ADE80"))
+                headline.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                headline.typeface = Typeface.DEFAULT_BOLD
+                card.addView(headline)
+                if (field.isNotBlank()) {
+                    val label = TextView(this)
+                    label.text = field
+                    label.setTextColor(Color.parseColor("#95D5B2"))
+                    label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    card.addView(label)
+                }
+            } else {
+                card.addView(buildListField(field, value))
+            }
+        }
+        return card
+    }
+
+    private fun buildListField(field: String, value: String): LinearLayout {
+        val block = LinearLayout(this)
+        block.orientation = LinearLayout.VERTICAL
+        block.setPadding(0, dp(8), 0, dp(4))
+        val label = TextView(this)
+        label.text = field
+        label.setTextColor(Color.parseColor("#95D5B2"))
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        val body = TextView(this)
+        body.text = value
+        body.setTextColor(Color.parseColor("#D8F3DC"))
+        body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+        block.addView(label)
+        block.addView(body)
+        return block
+    }
+
+    private fun buildDivider(): View {
+        val line = View(this)
+        line.setBackgroundColor(Color.parseColor("#1B4332"))
+        val params = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            dp(1),
+        )
+        params.topMargin = dp(8)
+        params.bottomMargin = dp(8)
+        line.layoutParams = params
+        return line
     }
 
     private fun buildRow(cells: List<String>, header: Boolean, rowIndex: Int): TableRow {

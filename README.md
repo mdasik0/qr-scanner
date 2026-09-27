@@ -1,6 +1,6 @@
 # How to use?
 
-[**Download QR Scan v0.8.1**](https://github.com/mdasik0/qr-scanner/raw/main/downloads/QR-Scan-v0.8.1.apk)
+[**Download QR Scan v0.8.2**](https://github.com/mdasik0/qr-scanner/raw/main/downloads/QR-Scan-v0.8.2.apk)
 
 Install the APK. Enter your **API base URL** (example `https://example.com`). No login.
 
@@ -8,6 +8,8 @@ Then pick a mode:
 
 - **See data** — scan a QR and show the result inside the app.
 - **Use as scanner** — scan a QR and send it to your API so you can update a website or do anything else with it.
+
+Optional **Settings** lets you pick how results look: **Table**, **Cards**, or **List**.
 
 ---
 

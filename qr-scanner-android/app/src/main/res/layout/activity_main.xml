@@ -81,6 +81,22 @@
                 </ScrollView>
             </HorizontalScrollView>
 
+            <ScrollView
+                android:id="@+id/listScroll"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1"
+                android:fillViewport="true"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/resultList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </ScrollView>
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/scanAgainButton"
                 android:layout_width="match_parent"
@@ -183,12 +199,113 @@
                 android:textSize="13sp" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/changeUrlButton"
+                android:id="@+id/settingsButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
+                android:text="@string/settings"
+                android:textColor="#95D5B2" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/changeUrlButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
                 android:text="@string/change_url"
+                android:textColor="#95D5B2" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Optional display templates -->
+    <ScrollView
+        android:id="@+id/settingsLayer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_title"
+                android:textColor="#D8F3DC"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_hint"
+                android:textColor="#95D5B2"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/templateTableButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:text="@string/template_table" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/template_table_hint"
+                android:textColor="#95D5B2"
+                android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/templateCardsButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:text="@string/template_cards" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/template_cards_hint"
+                android:textColor="#95D5B2"
+                android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/templateListButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:text="@string/template_list" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/template_list_hint"
+                android:textColor="#95D5B2"
+                android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/settingsDoneButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:text="@string/settings_done"
                 android:textColor="#95D5B2" />
         </LinearLayout>
     </ScrollView>
