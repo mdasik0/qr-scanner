@@ -3,12 +3,77 @@ package com.sumo.qrscanner
 import org.json.JSONArray
 import org.json.JSONObject
 
+class ShowFormatException(
+    message: String = TableResult.SHOW_RULE_MESSAGE,
+) : java.io.IOException(message)
+
 data class TableResult(
     val title: String,
     val columns: List<String>,
     val rows: List<List<String>>,
 ) {
     companion object {
+        const val SHOW_RULE_MESSAGE =
+            "Your API got something wrong. The scan still worked — see the guide below."
+
+        fun formatGuide(): TableResult = TableResult(
+            title = "Warning — your API reply is not in the show format",
+            columns = listOf("Guide", "What to do"),
+            rows = listOf(
+                listOf(
+                    "What happened",
+                    "The QR was read and sent. Your API answered, but data was not title + columns + rows, so the app did not draw it.",
+                ),
+                listOf(
+                    "Keep scanning",
+                    "This is only a warning. The camera stays on. Point at another QR anytime.",
+                ),
+                listOf(
+                    "How to use the app",
+                    "1) Sign in with your API URL. 2) Pick Scanner (send + show) or See data (show only). 3) Point the camera at a QR.",
+                ),
+                listOf(
+                    "How to show data",
+                    "Return { \"success\": true, \"data\": { \"title\": \"…\", \"columns\": [\"Field\", \"Value\"], \"rows\": [[\"Item\", \"Milk\"]] } }",
+                ),
+                listOf("data.title", "Headline at the top of this panel"),
+                listOf("data.columns", "Header names, same length as each row"),
+                listOf("data.rows", "List of rows. Each row is a list of cell strings."),
+                listOf(
+                    "Example",
+                    "{\"title\":\"Milk\",\"columns\":[\"Field\",\"Value\"],\"rows\":[[\"Item\",\"Milk\"],[\"Qty\",\"500 g\"]]}",
+                ),
+                listOf(
+                    "Do not return",
+                    "A flat object, a bare list, or only the raw QR. Fix the API, then scan again.",
+                ),
+            ),
+        )
+
+        /** Only Format A: data.title + data.columns[] + data.rows[][]. */
+        fun fromShowResponse(root: JSONObject): TableResult {
+            val data = root.opt("data")
+            if (data !is JSONObject) throw ShowFormatException()
+            val columnsJson = data.optJSONArray("columns")
+            val rowsJson = data.optJSONArray("rows")
+            if (columnsJson == null || rowsJson == null || columnsJson.length() == 0) {
+                throw ShowFormatException()
+            }
+            val columns = stringList(columnsJson)
+            val rows = mutableListOf<List<String>>()
+            for (i in 0 until rowsJson.length()) {
+                when (val item = rowsJson.opt(i)) {
+                    is JSONArray -> rows.add((0 until item.length()).map { cell(item.opt(it)) })
+                    is JSONObject -> rows.add(columns.map { col -> cell(item.opt(col)) })
+                    else -> throw ShowFormatException()
+                }
+            }
+            val title = data.optString("title").ifBlank {
+                root.optString("message").ifBlank { "Result" }
+            }
+            return TableResult(title, columns, rows)
+        }
+
         fun fromApiBody(text: String): TableResult {
             val root = JSONObject(text)
             val fallbackTitle = root.optString("message").ifBlank { "Result" }

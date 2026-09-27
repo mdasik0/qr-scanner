@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.scanAgainButton.setOnClickListener {
             clearResult()
-            binding.statusText.setText(R.string.status_ready)
+            setStatusReady()
             ensureCameraPermissionAndStart()
         }
 
@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
         lastPayload = null
         sending.set(false)
         clearResult()
-        binding.statusText.setText(R.string.status_ready)
+        setStatusReady()
         binding.scanModeLabel.setText(
             if (mode == ScanMode.SCANNER) R.string.scan_mode_scanner
             else R.string.scan_mode_see_data
@@ -234,11 +234,12 @@ class MainActivity : AppCompatActivity() {
             lastSentAt.set(System.currentTimeMillis())
             sending.set(false)
             runOnUiThread {
+                binding.statusText.setTextColor(Color.parseColor("#D8F3DC"))
                 binding.statusText.setText(
                     if (scanMode == ScanMode.SCANNER) R.string.status_ok
                     else R.string.status_lookup_ok
                 )
-                renderTable(table)
+                renderTable(table, warning = false)
                 binding.scanAgainButton.visibility = View.VISIBLE
                 Toast.makeText(
                     this,
@@ -247,10 +248,24 @@ class MainActivity : AppCompatActivity() {
                 ).show()
             }
         }
+        val onFormatWarning: () -> Unit = {
+            lastSentAt.set(System.currentTimeMillis())
+            sending.set(false)
+            runOnUiThread {
+                binding.statusText.setTextColor(Color.parseColor("#F4D35E"))
+                binding.statusText.setText(R.string.status_format_warning)
+                renderTable(TableResult.formatGuide(), warning = true)
+                binding.scanAgainButton.visibility = View.GONE
+                Toast.makeText(this, R.string.status_format_warning, Toast.LENGTH_SHORT).show()
+                ensureCameraPermissionAndStart()
+            }
+        }
         val onError: (String) -> Unit = { message ->
             sending.set(false)
             runOnUiThread {
+                binding.statusText.setTextColor(Color.parseColor("#D8F3DC"))
                 binding.statusText.setText(R.string.status_error)
+                binding.resultTitle.setTextColor(Color.parseColor("#4ADE80"))
                 binding.resultTitle.visibility = View.VISIBLE
                 binding.resultTitle.text = message
                 binding.scanAgainButton.visibility = View.VISIBLE
@@ -260,7 +275,7 @@ class MainActivity : AppCompatActivity() {
 
         cameraExecutor.execute {
             try {
-                if (scanMode == ScanMode.SCANNER) {
+                val json = if (scanMode == ScanMode.SCANNER) {
                     api.postScan(
                         baseUrl = settings.baseUrl,
                         token = settings.accessToken,
@@ -268,14 +283,19 @@ class MainActivity : AppCompatActivity() {
                         deviceId = deviceId(),
                         deviceLabel = android.os.Build.MODEL,
                     )
+                } else {
+                    api.postLookup(
+                        baseUrl = settings.baseUrl,
+                        token = settings.accessToken,
+                        rawPayload = payload,
+                        deviceId = deviceId(),
+                        deviceLabel = android.os.Build.MODEL,
+                    )
                 }
-                val table = ItemCheckingLookup.run(
-                    api,
-                    settings.baseUrl,
-                    settings.accessToken,
-                    payload,
-                )
+                val table = TableResult.fromShowResponse(json)
                 onSuccess(table)
+            } catch (_: ShowFormatException) {
+                onFormatWarning()
             } catch (e: Exception) {
                 val message = e.message.orEmpty()
                 if (message.contains("token", ignoreCase = true) ||
@@ -290,15 +310,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setStatusReady() {
+        binding.statusText.setTextColor(Color.parseColor("#D8F3DC"))
+        binding.statusText.setText(R.string.status_ready)
+        binding.resultTitle.setTextColor(Color.parseColor("#4ADE80"))
+    }
+
     private fun clearResult() {
         binding.resultTable.removeAllViews()
         binding.resultTitle.visibility = View.GONE
+        binding.resultTitle.setTextColor(Color.parseColor("#4ADE80"))
         binding.tableScroll.visibility = View.GONE
         binding.scanAgainButton.visibility = View.GONE
     }
 
-    private fun renderTable(table: TableResult) {
+    private fun renderTable(table: TableResult, warning: Boolean = false) {
         binding.resultTitle.text = table.title
+        binding.resultTitle.setTextColor(
+            Color.parseColor(if (warning) "#F4D35E" else "#4ADE80")
+        )
         binding.resultTitle.visibility = View.VISIBLE
         binding.resultTable.removeAllViews()
         binding.resultTable.addView(buildRow(table.columns, header = true, rowIndex = -1))

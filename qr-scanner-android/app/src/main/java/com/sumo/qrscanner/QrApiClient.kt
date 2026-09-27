@@ -39,7 +39,28 @@ class QrApiClient {
         rawPayload: String,
         deviceId: String,
         deviceLabel: String?,
-    ) {
+    ): JSONObject {
+        return postQr(baseUrl, token, "/qr-scans", rawPayload, deviceId, deviceLabel)
+    }
+
+    fun postLookup(
+        baseUrl: String,
+        token: String,
+        rawPayload: String,
+        deviceId: String,
+        deviceLabel: String?,
+    ): JSONObject {
+        return postQr(baseUrl, token, "/qr-scans/lookup", rawPayload, deviceId, deviceLabel)
+    }
+
+    private fun postQr(
+        baseUrl: String,
+        token: String,
+        path: String,
+        rawPayload: String,
+        deviceId: String,
+        deviceLabel: String?,
+    ): JSONObject {
         val body = JSONObject()
             .put("raw_payload", rawPayload)
             .put("device_id", deviceId)
@@ -51,8 +72,8 @@ class QrApiClient {
                     .put("app_version", BuildConfig.VERSION_NAME)
                     .put("sdk", android.os.Build.VERSION.SDK_INT),
             )
-        request(
-            url = "${AppSettings.apiRoot(baseUrl)}/qr-scans",
+        return request(
+            url = "${AppSettings.apiRoot(baseUrl)}$path",
             token = token,
             method = "POST",
             body = body,

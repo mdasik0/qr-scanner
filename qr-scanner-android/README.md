@@ -34,4 +34,6 @@ Install the web scanner as an app instead:
 
 Phone → `http://<PC-LAN-IP>:5055/scan` → Chrome **Add to Home screen**
 
+API contract (implement a backend the APK can talk to): `../docs/qr-parasite/doc.md`
+
 Docs: `../docs/qr-parasite/install-app.md`

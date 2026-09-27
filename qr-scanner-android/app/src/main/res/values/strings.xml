@@ -7,6 +7,7 @@
     <string name="status_ok">Sent to Item Checking — result also shown below.</string>
     <string name="status_lookup_ok">Result from backend</string>
     <string name="status_error">Request failed</string>
+    <string name="status_format_warning">Your API got something wrong. Camera is still on — see the guide below.</string>
     <string name="scan_again">Scan again</string>
     <string name="change_mode">Change mode</string>
     <string name="change_url">Change API / login</string>
