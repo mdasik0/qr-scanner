@@ -1,10 +1,61 @@
-# QR Scan API contract
+# How to use
 
-This is the backend the **QR Scan** Android app (v0.7.0+) talks to. Implement these three endpoints and the app can sign in, send scans, and draw a table.
+Guide for the **QR Scan** Android app (v0.7.0+) and for anyone building an API that works with it.
 
-The user types only the host in the app (example: `http://192.168.1.10:5011`). The app always appends `/api/v1`.
+On GitHub this file sits next to `qr-bridge` and `qr-scanner-android`.
 
-## Auth
+---
+
+## Install the app
+
+After install you should see **Native app v0.7.0** and a backend login screen.
+
+1. Uninstall any old **QR Scan** app and any home-screen shortcut that opens Chrome.
+2. On the same Wi‑Fi as the PC running qr-bridge, open `http://<PC-LAN-IP>:5055/install`.
+3. Download and install the APK.
+4. Open **QR Scan** from the app drawer — not from the browser.
+5. Sign in with the **API host** (example `http://192.168.x.x:5011`), email/username, and password.
+
+That host must implement the API below.
+
+### Build the APK yourself
+
+From `qr-scanner-android/`:
+
+```bat
+build-apk.bat
+```
+
+```bash
+chmod +x build-apk.sh && ./build-apk.sh
+```
+
+Output: `app/build/outputs/apk/debug/app-debug.apk`
+
+First time: open that folder in Android Studio once so the SDK path and Gradle wrapper exist.
+
+`local.properties` (created/updated by the build script):
+
+```properties
+sdk.dir=C:\\Users\\You\\AppData\\Local\\Android\\Sdk
+qr.api.base.url=http://192.168.x.x:5011
+```
+
+Use the PC LAN IP, not `localhost`. Emulator: `http://10.0.2.2:5011`.
+
+### Browser fallback
+
+Phone → `http://<PC-LAN-IP>:5055/scan` → Chrome **Add to Home screen**.
+
+That page talks to qr-bridge, not the native app login flow.
+
+---
+
+## How to make an API for this app
+
+Implement these three endpoints. The user types only the host in the app (example: `http://192.168.1.10:5011`). The app always appends `/api/v1`.
+
+### Auth
 
 All scan routes need a Bearer token from login.
 
@@ -13,13 +64,11 @@ All scan routes need a Bearer token from login.
 
 If login or a later call returns **401** / “Unauthorized” / a message containing `token`, the app clears the session and shows the login screen again.
 
----
-
-## 1. Login
+### 1. Login
 
 `POST /api/v1/login`
 
-### Request
+Request:
 
 ```json
 {
@@ -30,7 +79,7 @@ If login or a later call returns **401** / “Unauthorized” / a message contai
 
 `identifier` is email or username.
 
-### Success
+Success:
 
 ```json
 {
@@ -44,15 +93,13 @@ If login or a later call returns **401** / “Unauthorized” / a message contai
 
 The app only reads `data.accessToken`. If that string is missing, login fails and `message` is shown.
 
----
-
-## 2. Scanner mode — send + show
+### 2. Scanner mode — send + show
 
 `POST /api/v1/qr-scans`
 
 Use this when the user picks **Use as scanner**. Persist the scan, broadcast it to a website, or both — then **return a table** so the phone can draw it.
 
-### Request
+Request:
 
 ```json
 {
@@ -75,9 +122,7 @@ Use this when the user picks **Use as scanner**. Persist the scan, broadcast it 
 | `format` | no | Always `QR_CODE` from this app |
 | `meta` | no | App version + Android SDK |
 
-### Success — show format (required)
-
-HTTP **2xx**. `data` **must** be an object with `columns` (non-empty array) and `rows` (array). `title` is optional.
+Success — **show format** (required). HTTP **2xx**. `data` **must** be an object with `columns` (non-empty array) and `rows` (array). `title` is optional.
 
 ```json
 {
@@ -112,9 +157,7 @@ Rows may also be objects keyed by column name:
 
 If the request succeeds but `data` is not this shape, the scan still counts as sent. The camera stays on and the app shows a yellow format guide instead of a table.
 
----
-
-## 3. See data mode — show only
+### 3. See data mode — show only
 
 `POST /api/v1/qr-scans/lookup`
 
@@ -122,9 +165,7 @@ Same request body as `/qr-scans`. Same **show format** response.
 
 Use this when the user picks **See data**. Look the QR up and return a table. Do not require a live website listener.
 
----
-
-## Errors
+### Errors
 
 Any non-2xx response. The app shows `message` if present:
 
@@ -137,9 +178,7 @@ Any non-2xx response. The app shows `message` if present:
 
 Do not return HTML. If the body looks like a website (`<!DOCTYPE` / `<html`), the app tells the user they pointed at the website, not the API.
 
----
-
-## Show format rules
+### Show format rules
 
 The phone **only** draws a table when all of these are true:
 
@@ -151,7 +190,7 @@ The phone **only** draws a table when all of these are true:
 
 `data.title` is the headline. If it is blank, the app uses root `message`, then `"Result"`.
 
-### Do not return
+Do not return:
 
 - A flat object (`{ "item": "Milk", "qty": 1 }`)
 - A bare list
@@ -160,9 +199,7 @@ The phone **only** draws a table when all of these are true:
 
 Those answers are accepted as HTTP success, but the app will not draw them.
 
----
-
-## URL the user types
+### URL the user types
 
 | They type | App calls |
 |---|---|
@@ -172,9 +209,7 @@ Those answers are accepted as HTTP success, but the app will not draw them.
 
 Local HTTP is allowed. Use the PC LAN IP on a real phone, not `localhost`. Emulator: `http://10.0.2.2:5011`.
 
----
-
-## Minimal backend sketch
+### Minimal backend sketch
 
 ```text
 POST /api/v1/login
@@ -186,5 +221,3 @@ POST /api/v1/qr-scans          (Bearer)
 POST /api/v1/qr-scans/lookup   (Bearer)
   → { data: { title, columns, rows } }
 ```
-
-Install / build: [install-app.md](./install-app.md)

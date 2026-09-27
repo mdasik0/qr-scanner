@@ -1,6 +1,6 @@
-# QR Bridge — Phase 1 parasite API
+# QR Bridge
 
-See `../docs/qr-parasite/` for full docs.
+See [`../how-to-use.md`](../how-to-use.md) for the app and API guide.
 
 ```bash
 cp .env.example .env
