@@ -2,8 +2,6 @@
 
 Guide for the **QR Scan** Android app (v0.7.0+) and for anyone building an API that works with it.
 
-On GitHub this file sits next to `qr-bridge` and `qr-scanner-android`.
-
 ---
 
 ## Install the app

@@ -1,6 +1,6 @@
 # QR Bridge
 
-See [`../how-to-use.md`](../how-to-use.md) for the app and API guide.
+See the root [`README.md`](../README.md) for the app and API guide.
 
 ```bash
 cp .env.example .env
