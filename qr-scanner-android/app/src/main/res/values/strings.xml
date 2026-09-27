@@ -11,11 +11,11 @@
     <string name="scan_again">Scan again</string>
     <string name="change_mode">Change mode</string>
     <string name="change_url">Change API URL</string>
-    <string name="app_version_label">Native app v0.8.0</string>
+    <string name="app_version_label">Native app v0.8.1</string>
     <string name="setup_title">Connect API</string>
-    <string name="setup_hint">Enter your API base URL. Example: http://192.168.x.x:5011</string>
+    <string name="setup_hint">Enter your API base URL. Example: https://example.com</string>
     <string name="setup_url_label">API base URL</string>
-    <string name="setup_url_hint">http://192.168.x.x:5011</string>
+    <string name="setup_url_hint">https://example.com</string>
     <string name="setup_continue">Continue</string>
     <string name="setup_url_required">Enter an http:// or https:// API URL</string>
     <string name="mode_title">How do you want to use the app?</string>

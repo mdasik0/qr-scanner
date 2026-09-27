@@ -1,8 +1,8 @@
 # How to use?
 
-[**Download QR Scan v0.8.0**](https://github.com/mdasik0/qr-scanner/raw/main/downloads/QR-Scan-v0.8.0.apk)
+[**Download QR Scan v0.8.1**](https://github.com/mdasik0/qr-scanner/raw/main/downloads/QR-Scan-v0.8.1.apk)
 
-Install the APK. Enter your **API base URL** (example `http://192.168.1.10:5011`). No login.
+Install the APK. Enter your **API base URL** (example `https://example.com`). No login.
 
 Then pick a mode:
 
@@ -13,24 +13,21 @@ Then pick a mode:
 
 ## See data
 
-The user scans a QR. The app posts that QR to your API, then draws whatever you return.
+The user scans a QR. The app posts that QR to your API, then draws the object you return. Any fields — the app parses the object and shows them.
 
 ```js
 app.post("/see-data", async (req, res) => {
-  const qr = req.body.qr; // text from the QR
+  const qr = req.body.qr; // example: string, object, or anything
 
-  // do whatever you need with the QR
+  // example
   const item = await db.findByQr(qr);
 
-  // you MUST return this format — this is the only shape the app can draw
+  // you MUST return an object of fields — the app shows every key
   return res.json({
     title: "Milk",
-    columns: ["Field", "Value"],
-    rows: [
-      ["Item", "Milk"],
-      ["Qty", "500 g"],
-      ["Batch", qr],
-    ],
+    Item: "Milk",
+    Qty: "500 g",
+    Batch: qr,
   });
 });
 ```
@@ -38,25 +35,35 @@ app.post("/see-data", async (req, res) => {
 Example request the app sends:
 
 ```json
-{ "qr": "BTH-2026-12-3" }
+{ "qr": "<from the scan>" }
 ```
 
-Example response the app can show:
+Example response — a field/value object. Use any keys:
 
 ```json
 {
   "title": "Milk",
-  "columns": ["Field", "Value"],
+  "Item": "Milk",
+  "Qty": "500 g",
+  "Expiry": "2026-12-01"
+}
+```
+
+Example response — many rows, each row is an object (not an array):
+
+```json
+{
+  "title": "Batch",
   "rows": [
-    ["Item", "Milk"],
-    ["Qty", "500 g"]
+    { "Item": "Milk", "Qty": "500 g" },
+    { "Item": "Sugar", "Qty": "1 kg" }
   ]
 }
 ```
 
-`title` is the headline. `columns` are the table headers. `rows` is a list of rows. Each row is a list of cells, same length as `columns`.
+`title` is the headline. Everything else is shown as fields. The app does not need a `columns` list.
 
-If this format is missing, the camera stays on and the app shows a warning instead of a table.
+If the object has no fields to draw, the camera stays on and the app shows a warning.
 
 ---
 
@@ -66,9 +73,9 @@ Same idea: the app posts the QR. You use it anywhere — live website, socket, d
 
 ```js
 app.post("/scan", async (req, res) => {
-  const qr = req.body.qr; // text from the QR
+  const qr = req.body.qr; // example: string, object, or anything
 
-  // do whatever with the QR — same as pushing it into a website
+  // example
   io.emit("qr", qr);
   await db.saveScan(qr);
 
@@ -79,7 +86,7 @@ app.post("/scan", async (req, res) => {
 Example request the app sends:
 
 ```json
-{ "qr": "BTH-2026-12-3" }
+{ "qr": "<from the scan>" }
 ```
 
-`/scan` does not have to return a table. If you do return the same `{ title, columns, rows }` format as `/see-data`, the app will also draw it.
+`/scan` does not have to return fields. If you return the same object format as `/see-data`, the app will also draw it.

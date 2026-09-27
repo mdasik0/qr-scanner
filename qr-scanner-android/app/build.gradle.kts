@@ -13,11 +13,11 @@ android {
         applicationId = "com.sumo.qrscanner"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.8.0"
+        versionCode = 9
+        versionName = "0.8.1"
 
         // Override in local.properties:
-        // qr.api.base.url=http://192.168.x.x:5011
+        // qr.api.base.url=https://example.com
         val localProps = Properties()
         val localFile = rootProject.file("local.properties")
         if (localFile.exists()) {
@@ -26,7 +26,7 @@ android {
         val apiUrl =
             localProps.getProperty("qr.api.base.url")
                 ?: localProps.getProperty("qr.bridge.base.url")
-                ?: "http://159.223.80.142:5011"
+                ?: "https://example.com"
 
         buildConfigField("String", "QR_API_BASE_URL", "\"$apiUrl\"")
     }

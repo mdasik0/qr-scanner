@@ -16,67 +16,82 @@ data class TableResult(
         const val SHOW_RULE_MESSAGE =
             "Your API got something wrong. The scan still worked — see the guide below."
 
+        private val META_KEYS = setOf("title", "success", "message", "columns", "rows", "data")
+
         fun formatGuide(): TableResult = TableResult(
             title = "Warning — your API reply is not in the show format",
             columns = listOf("Guide", "What to do"),
             rows = listOf(
                 listOf(
                     "What happened",
-                    "The QR was read and sent. Your API answered, but data was not title + columns + rows, so the app did not draw it.",
+                    "The QR was read and sent. Your API answered, but the app found no fields to draw.",
                 ),
                 listOf(
                     "Keep scanning",
                     "This is only a warning. The camera stays on. Point at another QR anytime.",
                 ),
                 listOf(
-                    "How to use the app",
-                    "1) Enter your API base URL. 2) Pick See data or Use as scanner. 3) Point the camera at a QR.",
-                ),
-                listOf(
                     "How to show data",
-                    "POST /see-data must return { \"title\": \"…\", \"columns\": [\"Field\", \"Value\"], \"rows\": [[\"Item\", \"Milk\"]] }",
-                ),
-                listOf("title", "Headline at the top of this panel"),
-                listOf("columns", "Header names, same length as each row"),
-                listOf("rows", "List of rows. Each row is a list of cell strings."),
-                listOf(
-                    "Example",
-                    "{\"title\":\"Milk\",\"columns\":[\"Field\",\"Value\"],\"rows\":[[\"Item\",\"Milk\"],[\"Qty\",\"500 g\"]]}",
+                    "Return an object of fields. Example: { \"title\": \"Milk\", \"Item\": \"Milk\", \"Qty\": \"500 g\" }",
                 ),
                 listOf(
-                    "Do not return",
-                    "A flat object, a bare list, or only the raw QR. Fix the API, then scan again.",
+                    "Or many rows",
+                    "Example: { \"title\": \"Batch\", \"rows\": [{ \"Item\": \"Milk\", \"Qty\": \"500 g\" }] }",
+                ),
+                listOf(
+                    "Any fields",
+                    "Use any key names. The app reads the object and shows every field.",
                 ),
             ),
         )
 
-        /** title + columns[] + rows[][] on the root, or inside data. */
+        /** Any object of fields, or rows: [{ field: value, ... }]. */
         fun fromShowResponse(root: JSONObject): TableResult {
-            val data = tableObject(root) ?: throw ShowFormatException()
-            val columnsJson = data.optJSONArray("columns")
-            val rowsJson = data.optJSONArray("rows")
-            if (columnsJson == null || rowsJson == null || columnsJson.length() == 0) {
-                throw ShowFormatException()
-            }
-            val columns = stringList(columnsJson)
-            val rows = mutableListOf<List<String>>()
-            for (i in 0 until rowsJson.length()) {
-                when (val item = rowsJson.opt(i)) {
-                    is JSONArray -> rows.add((0 until item.length()).map { cell(item.opt(it)) })
-                    is JSONObject -> rows.add(columns.map { col -> cell(item.opt(col)) })
-                    else -> throw ShowFormatException()
+            val data = unwrap(root)
+            val title = data.optString("title").ifBlank {
+                root.optString("title").ifBlank {
+                    root.optString("message").ifBlank { "Result" }
                 }
             }
-            val title = data.optString("title").ifBlank {
-                root.optString("message").ifBlank { "Result" }
+            val rowsJson = data.opt("rows")
+            if (rowsJson is JSONArray && rowsJson.length() > 0) {
+                val objects = objectsIn(rowsJson)
+                if (objects.isNotEmpty()) {
+                    return fromRecords(title, objects)
+                }
             }
-            return TableResult(title, columns, rows)
+            val pairs = flattenObject(data).filterNot { META_KEYS.contains(it.first) }
+            if (pairs.isEmpty()) throw ShowFormatException()
+            return fieldValueTable(title, pairs)
         }
 
-        private fun tableObject(root: JSONObject): JSONObject? {
-            if (root.has("columns") && root.has("rows")) return root
+        private fun unwrap(root: JSONObject): JSONObject {
             val nested = root.opt("data")
-            return nested as? JSONObject
+            return if (nested is JSONObject) nested else root
+        }
+
+        private fun objectsIn(array: JSONArray): List<JSONObject> {
+            val out = mutableListOf<JSONObject>()
+            for (i in 0 until array.length()) {
+                val item = array.opt(i)
+                if (item is JSONObject) out.add(item)
+            }
+            return out
+        }
+
+        private fun fromRecords(title: String, objects: List<JSONObject>): TableResult {
+            val columns = linkedSetOf<String>()
+            for (obj in objects) {
+                val keys = obj.keys()
+                while (keys.hasNext()) columns.add(keys.next())
+            }
+            val cols = columns.toList()
+            if (cols.isEmpty()) throw ShowFormatException()
+            return TableResult(
+                title = title,
+                columns = cols,
+                rows = objects.map { obj -> cols.map { col -> cell(obj.opt(col)) } },
+            )
         }
 
         fun fromApiBody(text: String): TableResult {
