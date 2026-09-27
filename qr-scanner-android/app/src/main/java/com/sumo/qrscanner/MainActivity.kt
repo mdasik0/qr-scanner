@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
@@ -60,7 +59,6 @@ class MainActivity : AppCompatActivity() {
         binding.setupUrl.setText(
             settings.baseUrl.ifBlank { BuildConfig.QR_API_BASE_URL }
         )
-        binding.setupUser.setText(settings.identifier)
 
         binding.continueButton.setOnClickListener { saveSetupAndShowMode() }
         binding.scannerModeButton.setOnClickListener { enterScan(ScanMode.SCANNER) }
@@ -81,35 +79,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveSetupAndShowMode() {
         val url = binding.setupUrl.text?.toString().orEmpty()
-        val identifier = binding.setupUser.text?.toString().orEmpty().trim()
-        val password = binding.setupPassword.text?.toString().orEmpty()
         if (!AppSettings.isValidHttpUrl(url)) {
             Toast.makeText(this, R.string.setup_url_required, Toast.LENGTH_LONG).show()
             return
         }
-        if (identifier.isBlank() || password.isBlank()) {
-            Toast.makeText(this, R.string.setup_login_required, Toast.LENGTH_LONG).show()
-            return
-        }
-        binding.continueButton.isEnabled = false
-        cameraExecutor.execute {
-            try {
-                val token = api.login(url, identifier, password)
-                settings.baseUrl = url
-                settings.identifier = identifier
-                settings.accessToken = token
-                runOnUiThread {
-                    binding.continueButton.isEnabled = true
-                    binding.setupPassword.setText("")
-                    showScreen(Screen.MODE)
-                }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    binding.continueButton.isEnabled = true
-                    Toast.makeText(this, e.message ?: "Login failed", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
+        settings.baseUrl = url
+        showScreen(Screen.MODE)
     }
 
     private fun enterScan(mode: ScanMode) {
@@ -134,7 +109,7 @@ class MainActivity : AppCompatActivity() {
         if (next == Screen.MODE) {
             binding.connectedUrlText.text = getString(
                 R.string.mode_connected,
-                "${settings.identifier} @ ${settings.baseUrl}"
+                settings.baseUrl
             )
         }
         if (next != Screen.SCAN) stopCamera()
@@ -150,11 +125,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
-    }
-
-    private fun deviceId(): String {
-        return Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-            ?: "unknown-device"
     }
 
     private fun stopCamera() {
@@ -275,37 +245,30 @@ class MainActivity : AppCompatActivity() {
 
         cameraExecutor.execute {
             try {
-                val json = if (scanMode == ScanMode.SCANNER) {
-                    api.postScan(
-                        baseUrl = settings.baseUrl,
-                        token = settings.accessToken,
-                        rawPayload = payload,
-                        deviceId = deviceId(),
-                        deviceLabel = android.os.Build.MODEL,
-                    )
+                if (scanMode == ScanMode.SCANNER) {
+                    val json = api.postScan(settings.baseUrl, payload)
+                    lastSentAt.set(System.currentTimeMillis())
+                    sending.set(false)
+                    runOnUiThread {
+                        binding.statusText.setTextColor(Color.parseColor("#D8F3DC"))
+                        binding.statusText.setText(R.string.status_ok)
+                        try {
+                            renderTable(TableResult.fromShowResponse(json), warning = false)
+                        } catch (_: ShowFormatException) {
+                            binding.resultTitle.visibility = View.VISIBLE
+                            binding.resultTitle.text = json.optString("message").ifBlank { "Sent" }
+                        }
+                        binding.scanAgainButton.visibility = View.VISIBLE
+                        Toast.makeText(this, "Sent", Toast.LENGTH_SHORT).show()
+                    }
                 } else {
-                    api.postLookup(
-                        baseUrl = settings.baseUrl,
-                        token = settings.accessToken,
-                        rawPayload = payload,
-                        deviceId = deviceId(),
-                        deviceLabel = android.os.Build.MODEL,
-                    )
+                    val json = api.postSeeData(settings.baseUrl, payload)
+                    onSuccess(TableResult.fromShowResponse(json))
                 }
-                val table = TableResult.fromShowResponse(json)
-                onSuccess(table)
             } catch (_: ShowFormatException) {
                 onFormatWarning()
             } catch (e: Exception) {
-                val message = e.message.orEmpty()
-                if (message.contains("token", ignoreCase = true) ||
-                    message.contains("401") ||
-                    message.contains("Unauthorized", ignoreCase = true)
-                ) {
-                    settings.clearSession()
-                    runOnUiThread { showScreen(Screen.SETUP) }
-                }
-                onError(message.ifBlank { "Request failed" })
+                onError(e.message.orEmpty().ifBlank { "Request failed" })
             }
         }
     }

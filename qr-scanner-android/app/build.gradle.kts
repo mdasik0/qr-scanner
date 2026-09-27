@@ -13,8 +13,8 @@ android {
         applicationId = "com.sumo.qrscanner"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.7.0"
+        versionCode = 8
+        versionName = "0.8.0"
 
         // Override in local.properties:
         // qr.api.base.url=http://192.168.x.x:5011

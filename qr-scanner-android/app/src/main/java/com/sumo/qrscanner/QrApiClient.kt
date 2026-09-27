@@ -1,11 +1,9 @@
 package com.sumo.qrscanner
 
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -18,115 +16,34 @@ class QrApiClient {
 
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
 
-    fun login(baseUrl: String, identifier: String, password: String): String {
-        val body = JSONObject()
-            .put("identifier", identifier.trim())
-            .put("password", password)
-        val json = request(
-            url = "${AppSettings.apiRoot(baseUrl)}/login",
-            token = null,
-            method = "POST",
-            body = body,
-        )
-        val token = json.optJSONObject("data")?.optString("accessToken").orEmpty()
-        if (token.isBlank()) throw IOException(json.optString("message").ifBlank { "Login failed" })
-        return token
+    fun postScan(baseUrl: String, qr: String): JSONObject {
+        return postQr(baseUrl, "/scan", qr)
     }
 
-    fun postScan(
-        baseUrl: String,
-        token: String,
-        rawPayload: String,
-        deviceId: String,
-        deviceLabel: String?,
-    ): JSONObject {
-        return postQr(baseUrl, token, "/qr-scans", rawPayload, deviceId, deviceLabel)
+    fun postSeeData(baseUrl: String, qr: String): JSONObject {
+        return postQr(baseUrl, "/see-data", qr)
     }
 
-    fun postLookup(
-        baseUrl: String,
-        token: String,
-        rawPayload: String,
-        deviceId: String,
-        deviceLabel: String?,
-    ): JSONObject {
-        return postQr(baseUrl, token, "/qr-scans/lookup", rawPayload, deviceId, deviceLabel)
+    private fun postQr(baseUrl: String, path: String, qr: String): JSONObject {
+        val body = JSONObject().put("qr", qr)
+        return request("${AppSettings.apiRoot(baseUrl)}$path", body)
     }
 
-    private fun postQr(
-        baseUrl: String,
-        token: String,
-        path: String,
-        rawPayload: String,
-        deviceId: String,
-        deviceLabel: String?,
-    ): JSONObject {
-        val body = JSONObject()
-            .put("raw_payload", rawPayload)
-            .put("device_id", deviceId)
-            .put("device_label", deviceLabel)
-            .put("format", "QR_CODE")
-            .put(
-                "meta",
-                JSONObject()
-                    .put("app_version", BuildConfig.VERSION_NAME)
-                    .put("sdk", android.os.Build.VERSION.SDK_INT),
-            )
-        return request(
-            url = "${AppSettings.apiRoot(baseUrl)}$path",
-            token = token,
-            method = "POST",
-            body = body,
-        )
-    }
-
-    fun getJson(
-        baseUrl: String,
-        token: String,
-        path: String,
-        query: Map<String, String> = emptyMap(),
-    ): JSONObject {
-        val builder = "${AppSettings.apiRoot(baseUrl)}$path".toHttpUrl().newBuilder()
-        query.forEach { (key, value) -> builder.addQueryParameter(key, value) }
-        return request(url = builder.build().toString(), token = token, method = "GET", body = null)
-    }
-
-    private fun request(
-        url: String,
-        token: String?,
-        method: String,
-        body: JSONObject?,
-    ): JSONObject {
-        val builder = Request.Builder().url(url)
-        if (!token.isNullOrBlank()) {
-            builder.addHeader("Authorization", "Bearer $token")
-        }
-        if (method == "POST") {
-            builder.post((body ?: JSONObject()).toString().toRequestBody(jsonMedia))
-            builder.addHeader("Content-Type", "application/json")
-        }
-        client.newCall(builder.build()).execute().use { response ->
+    private fun request(url: String, body: JSONObject): JSONObject {
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Content-Type", "application/json")
+            .post(body.toString().toRequestBody(jsonMedia))
+            .build()
+        client.newCall(request).execute().use { response ->
             val text = response.body?.string().orEmpty()
             if (looksLikeHtml(text)) {
-                throw IOException("That URL is the website, not the API. Use the backend host on port 5011.")
+                throw IOException("That URL is the website, not the API.")
             }
             if (!response.isSuccessful) {
                 throw IOException(readError(text, response.code))
             }
             return if (text.isBlank()) JSONObject() else JSONObject(text)
-        }
-    }
-
-    fun dataObject(json: JSONObject): JSONObject? {
-        val data = json.opt("data")
-        return data as? JSONObject
-    }
-
-    fun dataArray(json: JSONObject): JSONArray {
-        return when (val data = json.opt("data")) {
-            is JSONArray -> data
-            is JSONObject -> data.optJSONArray("lines") ?: JSONArray()
-            else -> JSONArray()
         }
     }
 

@@ -262,48 +262,6 @@
                 android:textColorHint="#6B9080"
                 android:textSize="15sp" />
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="@string/setup_user_label"
-                android:textColor="#D8F3DC"
-                android:textSize="13sp" />
-
-            <EditText
-                android:id="@+id/setupUser"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="#1B4332"
-                android:hint="@string/setup_user_hint"
-                android:inputType="textEmailAddress"
-                android:padding="14dp"
-                android:textColor="#D8F3DC"
-                android:textColorHint="#6B9080"
-                android:textSize="15sp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="@string/setup_password_label"
-                android:textColor="#D8F3DC"
-                android:textSize="13sp" />
-
-            <EditText
-                android:id="@+id/setupPassword"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="#1B4332"
-                android:hint="@string/setup_password_hint"
-                android:inputType="textPassword"
-                android:padding="14dp"
-                android:textColor="#D8F3DC"
-                android:textColorHint="#6B9080"
-                android:textSize="15sp" />
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/continueButton"
                 android:layout_width="match_parent"

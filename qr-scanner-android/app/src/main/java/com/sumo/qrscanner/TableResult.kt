@@ -30,15 +30,15 @@ data class TableResult(
                 ),
                 listOf(
                     "How to use the app",
-                    "1) Sign in with your API URL. 2) Pick Scanner (send + show) or See data (show only). 3) Point the camera at a QR.",
+                    "1) Enter your API base URL. 2) Pick See data or Use as scanner. 3) Point the camera at a QR.",
                 ),
                 listOf(
                     "How to show data",
-                    "Return { \"success\": true, \"data\": { \"title\": \"…\", \"columns\": [\"Field\", \"Value\"], \"rows\": [[\"Item\", \"Milk\"]] } }",
+                    "POST /see-data must return { \"title\": \"…\", \"columns\": [\"Field\", \"Value\"], \"rows\": [[\"Item\", \"Milk\"]] }",
                 ),
-                listOf("data.title", "Headline at the top of this panel"),
-                listOf("data.columns", "Header names, same length as each row"),
-                listOf("data.rows", "List of rows. Each row is a list of cell strings."),
+                listOf("title", "Headline at the top of this panel"),
+                listOf("columns", "Header names, same length as each row"),
+                listOf("rows", "List of rows. Each row is a list of cell strings."),
                 listOf(
                     "Example",
                     "{\"title\":\"Milk\",\"columns\":[\"Field\",\"Value\"],\"rows\":[[\"Item\",\"Milk\"],[\"Qty\",\"500 g\"]]}",
@@ -50,10 +50,9 @@ data class TableResult(
             ),
         )
 
-        /** Only Format A: data.title + data.columns[] + data.rows[][]. */
+        /** title + columns[] + rows[][] on the root, or inside data. */
         fun fromShowResponse(root: JSONObject): TableResult {
-            val data = root.opt("data")
-            if (data !is JSONObject) throw ShowFormatException()
+            val data = tableObject(root) ?: throw ShowFormatException()
             val columnsJson = data.optJSONArray("columns")
             val rowsJson = data.optJSONArray("rows")
             if (columnsJson == null || rowsJson == null || columnsJson.length() == 0) {
@@ -72,6 +71,12 @@ data class TableResult(
                 root.optString("message").ifBlank { "Result" }
             }
             return TableResult(title, columns, rows)
+        }
+
+        private fun tableObject(root: JSONObject): JSONObject? {
+            if (root.has("columns") && root.has("rows")) return root
+            val nested = root.opt("data")
+            return nested as? JSONObject
         }
 
         fun fromApiBody(text: String): TableResult {

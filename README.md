@@ -1,178 +1,85 @@
-# How to use
+# How to use?
 
-[**Download QR Scan v0.7.0**](https://github.com/mdasik0/qr-scanner/raw/main/downloads/QR-Scan-v0.7.0.apk)
+[**Download QR Scan v0.8.0**](https://github.com/mdasik0/qr-scanner/raw/main/downloads/QR-Scan-v0.8.0.apk)
 
-Install the APK on your phone, then sign in with your API host, email or username, and password. That host must implement the API below.
+Install the APK. Enter your **API base URL** (example `http://192.168.1.10:5011`). No login.
+
+Then pick a mode:
+
+- **See data** — scan a QR and show the result inside the app.
+- **Use as scanner** — scan a QR and send it to your API so you can update a website or do anything else with it.
 
 ---
 
-## How to make an API for this app
+## See data
 
-Implement these three endpoints. The user types only the host in the app (example: `http://192.168.1.10:5011`). The app always appends `/api/v1`.
+The user scans a QR. The app posts that QR to your API, then draws whatever you return.
 
-### Auth
+```js
+app.post("/see-data", async (req, res) => {
+  const qr = req.body.qr; // text from the QR
 
-All scan routes need a Bearer token from login.
+  // do whatever you need with the QR
+  const item = await db.findByQr(qr);
 
-`Authorization: Bearer <accessToken>`  
-`Content-Type: application/json`
-
-If login or a later call returns **401** / “Unauthorized” / a message containing `token`, the app clears the session and shows the login screen again.
-
-### 1. Login
-
-`POST /api/v1/login`
-
-Request:
-
-```json
-{
-  "identifier": "wearhouse@espresso.com",
-  "password": "secret"
-}
-```
-
-`identifier` is email or username.
-
-Success:
-
-```json
-{
-  "success": true,
-  "message": "Logged in",
-  "data": {
-    "accessToken": "eyJhbGciOi..."
-  }
-}
-```
-
-The app only reads `data.accessToken`. If that string is missing, login fails and `message` is shown.
-
-### 2. Scanner mode — send + show
-
-`POST /api/v1/qr-scans`
-
-Use this when the user picks **Use as scanner**. Persist the scan, broadcast it to a website, or both — then **return a table** so the phone can draw it.
-
-Request:
-
-```json
-{
-  "raw_payload": "BTH-2026-12-3",
-  "device_id": "a1b2c3d4e5f6g7h8",
-  "device_label": "SM-A546E",
-  "format": "QR_CODE",
-  "meta": {
-    "app_version": "0.7.0",
-    "sdk": 34
-  }
-}
-```
-
-| Field | Required | Notes |
-|---|---|---|
-| `raw_payload` | yes | Exact text from the QR |
-| `device_id` | yes | Android `ANDROID_ID` |
-| `device_label` | no | Phone model |
-| `format` | no | Always `QR_CODE` from this app |
-| `meta` | no | App version + Android SDK |
-
-Success — **show format** (required). HTTP **2xx**. `data` **must** be an object with `columns` (non-empty array) and `rows` (array). `title` is optional.
-
-```json
-{
-  "success": true,
-  "message": "QR scan accepted",
-  "data": {
-    "title": "Milk",
-    "columns": ["Field", "Value"],
-    "rows": [
+  // you MUST return this format — this is the only shape the app can draw
+  return res.json({
+    title: "Milk",
+    columns: ["Field", "Value"],
+    rows: [
       ["Item", "Milk"],
       ["Qty", "500 g"],
-      ["Batch", "BTH-2026-12-3"]
-    ]
-  }
-}
+      ["Batch", qr],
+    ],
+  });
+});
 ```
 
-Rows may also be objects keyed by column name:
+Example request the app sends:
+
+```json
+{ "qr": "BTH-2026-12-3" }
+```
+
+Example response the app can show:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "title": "Batch BTH-2026-12-3",
-    "columns": ["Item", "Qty", "Expiry"],
-    "rows": [
-      { "Item": "Milk", "Qty": "500 g", "Expiry": "2026-12-01" }
-    ]
-  }
+  "title": "Milk",
+  "columns": ["Field", "Value"],
+  "rows": [
+    ["Item", "Milk"],
+    ["Qty", "500 g"]
+  ]
 }
 ```
 
-If the request succeeds but `data` is not this shape, the scan still counts as sent. The camera stays on and the app shows a yellow format guide instead of a table.
+`title` is the headline. `columns` are the table headers. `rows` is a list of rows. Each row is a list of cells, same length as `columns`.
 
-### 3. See data mode — show only
+If this format is missing, the camera stays on and the app shows a warning instead of a table.
 
-`POST /api/v1/qr-scans/lookup`
+---
 
-Same request body as `/qr-scans`. Same **show format** response.
+## Use as scanner
 
-Use this when the user picks **See data**. Look the QR up and return a table. Do not require a live website listener.
+Same idea: the app posts the QR. You use it anywhere — live website, socket, database, etc.
 
-### Errors
+```js
+app.post("/scan", async (req, res) => {
+  const qr = req.body.qr; // text from the QR
 
-Any non-2xx response. The app shows `message` if present:
+  // do whatever with the QR — same as pushing it into a website
+  io.emit("qr", qr);
+  await db.saveScan(qr);
+
+  return res.json({ message: "Sent" });
+});
+```
+
+Example request the app sends:
 
 ```json
-{
-  "success": false,
-  "message": "Batch not found"
-}
+{ "qr": "BTH-2026-12-3" }
 ```
 
-Do not return HTML. If the body looks like a website (`<!DOCTYPE` / `<html`), the app tells the user they pointed at the website, not the API.
-
-### Show format rules
-
-The phone **only** draws a table when all of these are true:
-
-1. Root JSON has `data` as an **object** (not a list, not the raw QR string).
-2. `data.columns` is a non-empty array of header names.
-3. `data.rows` is an array. Each row is either:
-   - an array of cells, or
-   - an object whose keys match `columns`.
-
-`data.title` is the headline. If it is blank, the app uses root `message`, then `"Result"`.
-
-Do not return:
-
-- A flat object (`{ "item": "Milk", "qty": 1 }`)
-- A bare list
-- Only `{ "raw_payload": "..." }`
-- The raw scan record (`id`, `device_id`, `scanned_at`, …) without `title` / `columns` / `rows`
-
-Those answers are accepted as HTTP success, but the app will not draw them.
-
-### URL the user types
-
-| They type | App calls |
-|---|---|
-| `http://192.168.1.10:5011` | `http://192.168.1.10:5011/api/v1/...` |
-| `http://192.168.1.10:5011/api/v1` | same — `/api/v1` is stripped, then added back |
-| `http://host:3011` | rewritten to port **5011** |
-
-Local HTTP is allowed. Use the PC LAN IP on a real phone, not `localhost`. Emulator: `http://10.0.2.2:5011`.
-
-### Minimal backend sketch
-
-```text
-POST /api/v1/login
-  → { data: { accessToken } }
-
-POST /api/v1/qr-scans          (Bearer)
-  → { data: { title, columns, rows } }
-
-POST /api/v1/qr-scans/lookup   (Bearer)
-  → { data: { title, columns, rows } }
-```
+`/scan` does not have to return a table. If you do return the same `{ title, columns, rows }` format as `/see-data`, the app will also draw it.
