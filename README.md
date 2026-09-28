@@ -1,4 +1,8 @@
-# How to use?
+# QR Scan
+
+Android QR scanner. Point at a code to look up the record in the app, or send it live to your API so a website can update. No login.
+
+## How to use?
 
 [**Download QR Scan v0.8.2**](https://github.com/mdasik0/qr-scanner/raw/main/downloads/QR-Scan-v0.8.2.apk)
 
