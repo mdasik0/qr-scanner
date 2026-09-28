@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run QR Scan on phone",
+      "type": "shell",
+      "command": "run-on-phone.bat",
+      "windows": {
+        "options": {
+          "shell": {
+            "executable": "cmd.exe",
+            "args": ["/d", "/c"]
+          }
+        }
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/qr-scanner-android"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "List Android phones",
+      "type": "shell",
+      "command": "D:\\\\android-build\\\\sdk\\\\platform-tools\\\\adb.exe devices -l",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.QrScanner" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">#1B4332</item>
+        <item name="colorPrimary">#2D6A4F</item>
         <item name="colorPrimaryVariant">#081C15</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="android:statusBarColor">#081C15</item>
+        <item name="colorOnPrimary">#F4FFF7</item>
+        <item name="android:statusBarColor">#06140F</item>
+        <item name="android:navigationBarColor">#06140F</item>
+        <item name="android:windowBackground">#06140F</item>
     </style>
 </resources>

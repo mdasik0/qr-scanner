@@ -4,12 +4,11 @@ import android.content.Context
 
 enum class DisplayTemplate {
     TABLE,
-    CARDS,
     LIST,
     ;
-
     companion object {
         fun fromStored(raw: String?): DisplayTemplate {
+            if (raw.equals("CARDS", ignoreCase = true)) return LIST
             return values().firstOrNull { it.name == raw } ?: TABLE
         }
     }
@@ -30,6 +29,12 @@ class AppSettings(context: Context) {
             prefs.edit().putString(KEY_TEMPLATE, value.name).apply()
         }
 
+    var accessToken: String
+        get() = prefs.getString(KEY_ACCESS_TOKEN, "")?.trim().orEmpty()
+        set(value) {
+            prefs.edit().putString(KEY_ACCESS_TOKEN, value.trim()).apply()
+        }
+
     val hasSetup: Boolean
         get() = baseUrl.isNotEmpty()
 
@@ -37,6 +42,7 @@ class AppSettings(context: Context) {
         private const val PREFS = "qr_scanner_settings"
         private const val KEY_BASE_URL = "base_url"
         private const val KEY_TEMPLATE = "display_template"
+        private const val KEY_ACCESS_TOKEN = "access_token"
 
         fun normalizeBaseUrl(raw: String): String {
             var value = raw.trim().trimEnd('/')

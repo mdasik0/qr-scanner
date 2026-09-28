@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#012156</color>
+    <color name="forest_void">#06140F</color>
+    <color name="forest_deep">#081C15</color>
+    <color name="surface">#0F241C</color>
+    <color name="surface_high">#173328</color>
+    <color name="stroke">#25503C</color>
+    <color name="mint">#4ADE80</color>
+    <color name="mint_dim">#2D6A4F</color>
+    <color name="text_primary">#F4FFF7</color>
+    <color name="text_secondary">#A9D9C0</color>
+    <color name="text_muted">#6B9080</color>
 </resources>
